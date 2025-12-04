@@ -1,0 +1,12 @@
+# Maven target folder
+/target/
+
+# Database files
+/data/
+
+# Personal notes
+anotaciones.txt
+
+# OS-specific files
+.DS_Store
+Thumbs.db

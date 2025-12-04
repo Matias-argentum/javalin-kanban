@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>User page</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
+</head>
+
+<body>
+
+    <div class="container is-max-desktop">
+        <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="navbar-brand">
+                <a class="navbar-item" href="user.html">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#00d1b2" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+
+                </a>
+            </div>
+            <div class="navbar-end is-flex is-align-items-center">
+                <div class="navbar-item">
+                    <span class="tag is-primary is-medium" id="username">Hola, username</span>
+                </div>
+                <div class="navbar-item">
+                    <button class="button is-primary" id="logoutBtn">Salir</button>
+                </div>
+            </div>
+
+        </nav>
+
+        <section class="section is-small">
+            <div class="container">
+                <div class="buttons is-centered">
+                    <button class="button is-primary is-outlined" id="seeBoardsBtn">Ver Mis Tableros</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="notification is-hidden" id="notificationDiv"
+            style="position: fixed; top: 80px; left: 40px; min-width: 300px;">
+            <p id="notificationMessage">lalllalllalalallalalallaa</p>
+        </div>
+
+        <section id="dynamicSection" class="section">
+            <p class="has-text-centered">Hacé click en los botones de arriba, crack!</p>
+        </section>
+
+    </div>
+
+
+</body>
+<script src="js/user.js">
+</script>
+
+</html>
