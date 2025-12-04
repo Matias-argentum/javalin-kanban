@@ -318,6 +318,9 @@ const createKanban = (tasks, boardId) => {
     //firstColumn.style.borderRadius = "5px";
     firstColumn.style.border = "2px solid #66d1ff";
     firstColumn.innerHTML = '<h1 class="has-text-info subtitle">TO DO</h1>';
+    addDragoverEvent(firstColumn);
+    addDragleaveEvent(firstColumn);
+    addDropEvent(firstColumn, boardId);
 
     const secondColumn = document.createElement("div");
 
@@ -325,12 +328,18 @@ const createKanban = (tasks, boardId) => {
     secondColumn.style.minHeight = "70vh";
     secondColumn.style.border = "2px solid #ffb70f";
     secondColumn.innerHTML = '<h1 class="has-text-warning subtitle">IN PROGRESS</h1>';
+    addDragoverEvent(secondColumn);
+    addDragleaveEvent(secondColumn);
+    addDropEvent(secondColumn, boardId);
 
     const thirdColumn = document.createElement("div");
     thirdColumn.style.minHeight = "70vh";
     thirdColumn.classList.add("column", "is-one-third", "has-background-dark", "m-2", "has-text-centered", "kanban-column-done", "box");
     thirdColumn.style.border = "2px solid #48c78e";
     thirdColumn.innerHTML = '<h1 class="has-text-success subtitle">DONE</h1>';
+    addDragoverEvent(thirdColumn);
+    addDragleaveEvent(thirdColumn);
+    addDropEvent(thirdColumn, boardId);
 
     firstColumn.appendChild(createNewTaskForm(boardId));
 
@@ -431,6 +440,11 @@ const createTaskCard = (task, boardId) => {
         card.style.transform = "scale(1.0)";
     })
 
+    card.addEventListener("dragstart", (event) => {
+        event.dataTransfer.setData("taskId", task.id);
+    })
+
+
     card.setAttribute("draggable", true)
 
     const taskText = document.createElement("p");
@@ -438,7 +452,7 @@ const createTaskCard = (task, boardId) => {
     card.appendChild(taskText);
 
     const editBtn = document.createElement("button");
-    editBtn.classList.add("button", "is-small", "is-info", "ml-2", "is-outlined", "is-invderted");
+    editBtn.classList.add("button", "is-small", "is-info", "ml-2", "is-outlined");
     editBtn.innerText = "Editar";
 
     const deleteBtn = document.createElement("button");
@@ -536,14 +550,88 @@ const handleCreateTask = async (boardId) => {
 }
 
 const applyTaskStyle = (card, state) => {
-  if (state === "TO_DO") {
-    card.style.border = "1px solid #66d1ff";
-    card.style.color = "#66d1ff";
-  } else if (state === "IN_PROGRESS") {
-    card.style.border = "1px solid #ffb70f";
-    card.style.color = "#ffb70f";
-  } else if (state === "DONE") {
-    card.style.border = "1px solid #48c78e";
-    card.style.color = "#48c78e";
-  }
+    if (state === "TO_DO") {
+        card.style.border = "1px solid #66d1ff";
+        card.style.color = "#66d1ff";
+    } else if (state === "IN_PROGRESS") {
+        card.style.border = "1px solid #ffb70f";
+        card.style.color = "#ffb70f";
+    } else if (state === "DONE") {
+        card.style.border = "1px solid #48c78e";
+        card.style.color = "#48c78e";
+    }
 };
+const addDragoverEvent = (column) => {
+    column.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.currentTarget.style.opacity = "0.8";
+    });
+}
+
+const addDragleaveEvent = (column) => {
+    column.addEventListener("dragleave", (event) => {
+        event.preventDefault();
+        event.currentTarget.style.opacity = "1";
+    });
+}
+
+const addDropEvent = (column, boardId) => {
+    column.addEventListener("drop", (event) => {
+        event.preventDefault();
+
+        const taskId = event.dataTransfer.getData("taskId") //esta linea
+        const card = document.querySelector(`[data-task-id="${taskId}"]`); //esta lina
+
+        const oldState = card.dataset.taskState
+        const oldColumn = card.parentElement
+
+        const newColumn = event.currentTarget;
+        let newState = getStateByColumn(newColumn);
+
+        event.currentTarget.appendChild(card);
+        card.dataset.taskState = newState;
+        applyTaskStyle(card, newState);
+
+        if (newState === oldState) {
+            showMessage("La task se queda ne su columna", "success");
+            return;
+        }
+
+        handleUpdateTaskState(taskId, newState, card, oldColumn, oldState, boardId);
+    });
+}
+
+const getStateByColumn = (targetColumn) => {
+
+    let newState;
+
+    if (targetColumn.classList.contains("kanban-column-todo")) {
+        newState = "TO_DO";
+    } else if (targetColumn.classList.contains("kanban-column-inprogress")) {
+        newState = "IN_PROGRESS";
+    } else if (targetColumn.classList.contains("kanban-column-done")) {
+        newState = "DONE";
+    }
+
+    return newState;
+}
+
+const handleUpdateTaskState = async (taskId, newState, card, oldColumn, oldState, boardId) => {
+    try {
+        const data = { state: newState };
+        const response = await apiPut(`/api/protected/boards/${boardId}/tasks/${taskId}/state`, data);
+        console.log(response);
+        showMessage("Task actualizada en backend", "success");
+    } catch (error) {
+        oldColumn.appendChild(card);
+        card.dataset.taskState = oldState;
+        applyTaskStyle(card, oldState);
+        showMessage(error, "error");
+        if (error == "Error: Ocurrió un error") {
+            setTimeout(() => {
+                logout();
+            }, 3000);
+        }
+        return;
+    }
+}
