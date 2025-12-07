@@ -18,6 +18,16 @@ document.addEventListener("DOMContentLoaded", () => {
     logoutBtn.addEventListener("click", () => {
         logout();
     });
+
+    const editTaslBtn = document.getElementById("submitEditedTask");
+
+    editTaslBtn.addEventListener("click", () => {
+        blockElement(editTaslBtn);
+        handleUpdateTaskDescription();
+        closeModal(document.getElementById("modal-edit"));
+        unblockElement(editTaslBtn);
+    });
+
 });
 
 const isUser = () => {
@@ -305,6 +315,8 @@ const renderKanban = async (boardId, boardName) => {
     board.innerText = boardName;
     section.appendChild(board)
     section.appendChild(kanban);
+
+    addModalEditEvent(boardId);
 }
 
 const createKanban = (tasks, boardId) => {
@@ -448,16 +460,19 @@ const createTaskCard = (task, boardId) => {
     card.setAttribute("draggable", true)
 
     const taskText = document.createElement("p");
+    taskText.classList.add("task-description");
     taskText.innerText = task.description;
     card.appendChild(taskText);
 
     const editBtn = document.createElement("button");
-    editBtn.classList.add("button", "is-small", "is-info", "ml-2", "is-outlined");
+    editBtn.classList.add("button", "is-small", "is-info", "ml-2", "is-outlined", "modal-edit-task");
+    editBtn.setAttribute("data-target", "modal-edit");
     editBtn.innerText = "Editar";
 
     const deleteBtn = document.createElement("button");
     deleteBtn.classList.add("button", "is-small", "is-danger", "ml-2", "is-outlined");
     deleteBtn.innerText = "Eliminar";
+
 
     deleteBtn.addEventListener("click", async () => {
         blockElement(deleteBtn);
@@ -472,6 +487,7 @@ const createTaskCard = (task, boardId) => {
 
     const actions = document.createElement("div");
     actions.classList.add("mt-1", "has-text-right");
+
     actions.appendChild(editBtn);
     actions.appendChild(deleteBtn);
 
@@ -590,6 +606,7 @@ const addDropEvent = (column, boardId) => {
 
         event.currentTarget.appendChild(card);
         card.dataset.taskState = newState;
+        
         applyTaskStyle(card, newState);
 
         if (newState === oldState) {
@@ -635,3 +652,122 @@ const handleUpdateTaskState = async (taskId, newState, card, oldColumn, oldState
         return;
     }
 }
+
+const handleUpdateTaskDescription = async () => {
+    const taskId = document.getElementById("editingTask").value;
+    const newState = document.getElementById("selectEditingState").value;
+    const description = document.getElementById("editingDescription").value;
+    const boardId = document.getElementById("editingTaskBoardId").value;
+    if (description.length < 1) {
+        showMessage(error, "La description no puede estar vacia");
+    }
+
+    try {
+        const data = { description: description, state: newState };
+        console.log(data);
+        removeCardFromDomById(taskId);
+        const response = await apiPut(`/api/protected/boards/${boardId}/tasks/${taskId}`, data);
+        console.log(response.task);
+
+        insertUpdatedTaskToDom(response.task, boardId);
+        addModalEditEvent(boardId);
+        showMessage("Task actualizada en backend", "success");
+
+    } catch (error) {
+        showMessage(error, "error");
+        if (error == "Error: Ocurrió un error") {
+            setTimeout(() => {
+                logout();
+            }, 3000);
+        }
+        return;
+    }
+}
+
+const removeCardFromDomById = (taskId) => {
+    const cardElement = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (cardElement) {
+        cardElement.remove();
+    }
+}
+
+const insertUpdatedTaskToDom = (task, boardId) => {
+    console.log("task en insert to board after update:  " + task);
+    
+    let column;
+    if (task.state == "TO_DO") {
+        column = document.querySelector(".kanban-column-todo");
+    } else if (task.state == "IN_PROGRESS") {
+        column = document.querySelector(".kanban-column-inprogress");
+    } else if (task.state == "DONE") {
+        column = document.querySelector(".kanban-column-done");
+    }
+    const taskCard = createTaskCard(task, boardId);
+    //applyTaskStyle(taskCard, task.state);
+
+    column.appendChild(taskCard, boardId);
+}
+
+const addModalEditEvent = (boardId) => {
+    (document.querySelectorAll('.modal-edit-task') || []).forEach(($trigger) => {
+
+        const modal = $trigger.dataset.target;
+        const $target = document.getElementById(modal);
+
+        $trigger.addEventListener('click', () => {
+
+            const taskCard = $trigger.closest(".box");
+            console.log("taskCard");
+
+            console.log(taskCard);
+
+            const taskId = taskCard.dataset.taskId;
+            const state = taskCard.dataset.taskState;
+            const description = taskCard.querySelector(".task-description").textContent;
+
+            console.log("id ", taskId);
+            console.log("state ", state);
+            console.log("description ", description);
+            document.getElementById("editingTask").value = taskId;
+            document.getElementById("editingDescription").value = description;
+            document.getElementById("editingTaskBoardId").value = boardId;
+
+            const mySelect = document.getElementById("selectEditingState");
+            const optionToSelect = Array.from(mySelect.options).find(option => option.value === state);
+            if (optionToSelect) {
+                optionToSelect.selected = true;
+            }
+            openModal($target);
+        });
+    });
+}
+
+// Functions to open and close a modal
+function openModal($el) {
+    $el.classList.add('is-active');
+}
+
+function closeModal($el) {
+    $el.classList.remove('is-active');
+}
+
+function closeAllModals() {
+    (document.querySelectorAll('.modal') || []).forEach(($modal) => {
+        closeModal($modal);
+    });
+}
+
+(document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button') || []).forEach(($close) => {
+    const $target = $close.closest('.modal');
+
+    $close.addEventListener('click', () => {
+        closeModal($target);
+    });
+});
+
+// Add a keyboard event to close all modals
+document.addEventListener('keydown', (event) => {
+    if (event.key === "Escape") {
+        closeAllModals();
+    }
+});
