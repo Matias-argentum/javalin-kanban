@@ -8,8 +8,10 @@ import com.tablero.controller.TaskController;
 import com.tablero.controller.UserController;
 import com.tablero.middleware.AuthMiddleware;
 import com.tablero.middleware.RoleMiddleware;
+import com.tablero.websockets.BoardWebsocketHandler;
 
 import io.javalin.Javalin;
+
 
 public class RouteConfig {
     private final AuthController authController;
@@ -17,7 +19,8 @@ public class RouteConfig {
     private final BoardController boardController;
     private final TaskController taskController;
 
-    public RouteConfig(AuthController authController, UserController userController, BoardController boardController, TaskController taskController) {
+    public RouteConfig(AuthController authController, UserController userController, BoardController boardController,
+            TaskController taskController) {
         this.authController = authController;
         this.userController = userController;
         this.boardController = boardController;
@@ -52,15 +55,23 @@ public class RouteConfig {
         app.get("/api/protected/profile", ctx -> userController.getProfile(ctx));
 
         // user routes for tasks
-       
+
         app.post("/api/protected/boards/{boardId}/tasks", ctx -> taskController.createTask(ctx));
-        
+
         app.get("/api/protected/boards/{boardId}/tasks", ctx -> taskController.getAllTasksByBoard(ctx));
-        
+
         app.put("/api/protected/boards/{boardId}/tasks/{taskId}", ctx -> taskController.updateTask(ctx));
-        
+
         app.put("/api/protected/boards/{boardId}/tasks/{taskId}/state", ctx -> taskController.updateTaskState(ctx));
-        
+
         app.delete("/api/protected/boards/{boardId}/tasks/{taskId}", ctx -> taskController.deleteTask(ctx));
+
+        // webSockets
+        app.ws("/api/protected/boards/{boardId}/ws", ws -> {
+            ws.onConnect(BoardWebsocketHandler::onConnect);
+            ws.onClose(BoardWebsocketHandler::onClose);
+            ws.onMessage(BoardWebsocketHandler::onMessage);
+        });
+
     }
 }

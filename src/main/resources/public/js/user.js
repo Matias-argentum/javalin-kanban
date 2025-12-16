@@ -317,6 +317,8 @@ const renderKanban = async (boardId, boardName) => {
     section.appendChild(kanban);
 
     addModalEditEvent(boardId);
+
+    connectBoardWebSocket(boardId);
 }
 
 const createKanban = (tasks, boardId) => {
@@ -606,7 +608,7 @@ const addDropEvent = (column, boardId) => {
 
         event.currentTarget.appendChild(card);
         card.dataset.taskState = newState;
-        
+
         applyTaskStyle(card, newState);
 
         if (newState === oldState) {
@@ -693,7 +695,7 @@ const removeCardFromDomById = (taskId) => {
 
 const insertUpdatedTaskToDom = (task, boardId) => {
     console.log("task en insert to board after update:  " + task);
-    
+
     let column;
     if (task.state == "TO_DO") {
         column = document.querySelector(".kanban-column-todo");
@@ -771,3 +773,49 @@ document.addEventListener('keydown', (event) => {
         closeAllModals();
     }
 });
+
+const connectBoardWebSocket = (boardId) => {
+    const token = localStorage.getItem("token"); // recuperás el JWT
+    if (!token) {
+        console.error("No hay token en localStorage");
+        return;
+    }
+
+    const wsUrl = `ws://localhost:7000/api/protected/boards/${boardId}/ws?token=${token}`;
+
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        console.log("WebSocket conectado al board", boardId);
+    };
+
+    socket.onmessage = (event) => {
+        console.log("Mensaje recibido:", event.data);
+        try {
+            const task = JSON.parse(event.data);
+            if (!task.description || !task.state) {
+                removeCardFromDomById(task.id);
+                console.log("Tarea ELiminada: ", task.id);
+                return;
+            }
+
+            removeCardFromDomById(task.id);
+
+            insertUpdatedTaskToDom(task, boardId);
+
+            addModalEditEvent(boardId);
+        } catch (error) {
+            console.error("Error en sincronzacion de websockets", e);
+        }
+    };
+
+    socket.onclose = (event) => {
+        console.log("WebSocket cerrado:", event.code, event.reason);
+    };
+
+    socket.onerror = (error) => {
+        console.error("Error en WebSocket:", error);
+    };
+
+    return socket;
+}
