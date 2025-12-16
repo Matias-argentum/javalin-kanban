@@ -10,6 +10,7 @@ import com.tablero.model.Task;
 import com.tablero.model.TaskState;
 import com.tablero.service.TaskService;
 import com.tablero.utils.StateMapper;
+import com.tablero.websockets.WebsocketManager;
 
 import io.javalin.http.Context;
 
@@ -46,6 +47,7 @@ public class TaskController {
 
         try {
             Task newTask = taskService.create( userId, description, state, boardId);
+            WebsocketManager.broadcast(String.valueOf(boardId), newTask);
             ctx.status(201).json(Map.of("task", newTask));
             return;
         } catch (Exception e) {
@@ -86,6 +88,7 @@ public class TaskController {
 
         try {
             Task updatedTask = taskService.update(id, description, state, boardId, userId);
+            WebsocketManager.broadcast(String.valueOf(boardId), updatedTask);
             ctx.status(200).json(Map.of("task", updatedTask));
             return;
         } catch (Exception e) {
@@ -129,6 +132,9 @@ public class TaskController {
         try {
 
             Task updatedTask = taskService.updateTaskState(id, state, boardId, userId);
+
+            WebsocketManager.broadcast(String.valueOf(boardId), updatedTask);
+
             ctx.status(200).json(Map.of("task", updatedTask));
             return;
         } catch (Exception e) {
@@ -175,6 +181,10 @@ public class TaskController {
             boolean result = taskService.delete(taskId, boardId, userId);
 
             if (result) {
+                Task deletedTask = new Task();
+                deletedTask.setId(taskId);
+                //si la task no tiene descripcion ni estado es porque hay que borrarla
+                WebsocketManager.broadcast(String.valueOf(boardId), deletedTask);
                 ctx.status(200).json(Map.of("message", "Successfully deleted"));
             }
 
